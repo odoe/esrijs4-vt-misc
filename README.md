@@ -7,6 +7,6 @@ The source Vector Tile style has been trimmed down to only 24 layers and 8 uniqu
 This is only meant for demonstration purposes.
 You could build upon these output styles and modify as needed for your needs.
 
-[Time aware demo](https://odoe.github.io/esrijs4-vt-misc/vector-tile-time-switch.html)
-[Color Smasher demo](https://odoe.github.io/esrijs4-vt-misc/vector-tile-color-smasher.html)
-[Query demo](https://odoe.github.io/esrijs4-vt-misc/vector-tile-query.html)
+* [Time aware demo](https://odoe.github.io/esrijs4-vt-misc/vector-tile-time-switch.html)
+* [Color Smasher demo](https://odoe.github.io/esrijs4-vt-misc/vector-tile-color-smasher.html)
+* [Query demo](https://odoe.github.io/esrijs4-vt-misc/vector-tile-query.html)
