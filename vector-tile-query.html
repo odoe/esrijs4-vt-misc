@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+  <title>Vector Tile Popups</title>
+
+  <style>
+    html,
+    body,
+    #viewDiv {
+      padding: 0;
+      margin: 0;
+      height: 100%;
+      width: 100%;
+    }
+  </style>
+
+  <link rel="stylesheet" href="https://js.arcgis.com/4.0/esri/css/main.css">
+  <script src="https://js.arcgis.com/4.0/"></script>
+
+  <script>
+    require([
+      "esri/Map",
+      "esri/views/MapView",
+      "esri/layers/FeatureLayer",
+      "esri/layers/VectorTileLayer",
+      "esri/widgets/Search",
+      "esri/widgets/Legend",
+      "esri/tasks/QueryTask",
+      "esri/tasks/support/Query",
+      "esri/geometry/geometryEngine"
+    ], function(
+      Map,
+      MapView,
+      FeatureLayer, VectorTileLayer,
+      Search, Legend,
+      QueryTask, Query,
+      geometryEngine) {
+
+      var buffer = geometryEngine.buffer;
+
+      var map = new Map({
+        basemap: "streets"
+      });
+
+      var fLayer = new FeatureLayer({
+        url: "http://services.arcgis.com/V6ZHFr6zdgNZuVG0/arcgis/rest/services/USHexbinCentroid/FeatureServer/0",
+        outFields: ["*"],
+        definitionExpression: "OBJECTID = -99"
+      });
+
+      var tileLyr = new VectorTileLayer({
+        url: "http://tiles.arcgis.com/tiles/V6ZHFr6zdgNZuVG0/arcgis/rest/services/USHouseholdsHex/VectorTileServer/resources/styles/root.json",
+        opacity: 0.8
+      });
+      map.addMany([fLayer, tileLyr]);
+
+      var view = new MapView({
+        container: "viewDiv",
+        map: map,
+        center: [-98.648, 36.374], // lon, lat
+        zoom: 5
+      });
+
+      var search = new Search({
+        viewModel: {
+          view: view
+        }
+      }, "searchDiv");
+
+      var legend = new Legend({
+        view: view,
+        map: map
+      });
+
+      view.ui.add(search, "top-right");
+      //view.ui.add(legend, "bottom-right");
+
+      var qTask = new QueryTask({
+        url: "http://services.arcgis.com/V6ZHFr6zdgNZuVG0/arcgis/rest/services/USHexbinCentroid/FeatureServer/0"
+      });
+
+      view.on("click", function(event) {
+        var mapPoint = event.mapPoint;
+        var buffPoint = buffer(mapPoint, 5, "kilometers");
+        var query = new Query({
+          returnGeometry: true,
+          geometry: buffPoint,
+          outFields: ["SUM_HOUSEHOLDS", "SUM_POP2010"]
+        });
+        fLayer.queryFeatures(query).then(function(results) {
+          if (results.features.length) {
+            results.features.forEach(function(feature) {
+              feature.popupTemplate = {
+                title: "Households Information",
+                content: "{*}"
+              };
+            });
+          view.popup.features = results.features;
+          view.popup.location = mapPoint;
+          }
+        });
+      });
+    });
+  </script>
+</head>
+
+<body>
+  <div id="viewDiv"></div>
+</body>
+
+</html>

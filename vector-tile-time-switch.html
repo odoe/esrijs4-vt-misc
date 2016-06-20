@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+  <title>Vector Tile Time of Day</title>
+
+  <style>
+    html,
+    body,
+    #viewDiv {
+      padding: 0;
+      margin: 0;
+      height: 100%;
+      width: 100%;
+    }
+    #clock {
+      width: 220px;
+      height: 220px;
+    }
+  </style>
+
+  <link rel="stylesheet" href="https://js.arcgis.com/4.0/esri/css/main.css">
+  <script src="https://js.arcgis.com/4.0/"></script>
+
+  <script>
+    require([
+      "esri/Map",
+      "esri/views/MapView",
+      "esri/widgets/Search",
+      "moment/moment",
+      "./Clock.js",
+      "dojo/domReady!"
+    ], function(
+      Map,
+      MapView,
+      Search,
+      moment,
+      Clock) {
+
+      var map = new Map({
+        basemap: "streets-navigation-vector"
+      });
+
+      var view = new MapView({
+        container: "viewDiv",
+        map: map,
+        center: [-118.182, 33.913], // lon, lat
+        zoom: 7
+      });
+
+      var searchWidget = new Search({
+        view: view
+      }, "searchDiv");
+      searchWidget.startup();
+
+      // Add the search widget to the top left corner of the view
+      view.ui.add(searchWidget, {
+        position: "top-right",
+        index: 1
+      });
+
+      view.then(function() {
+        var clock = new Clock({
+          el: "clock",
+          skin: require.toUrl("./clock.svg"),
+          time: Date.now()
+        });
+        view.ui.add("clock", "bottom-right");
+        
+        clock.on("time-change", function(time) {
+          var diff = moment(time).clone().diff(moment(time).clone().startOf('day'), 'minutes');
+          if (diff >= 1000 || diff <= 420) {
+            map.basemap = "streets-night-vector";
+          }
+          else if (diff > 420 || diff < 1000) {
+            map.basemap = "streets-navigation-vector";
+          }
+        });
+      });
+    });
+  </script>
+</head>
+
+<body>
+  <div id="viewDiv"></div>
+  <div id="clock"></div>
+</body>
+
+</html>

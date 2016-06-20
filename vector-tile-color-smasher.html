@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+  <title>Vector Tile Color Smasher!</title>
+
+  <style>
+    html,
+    body,
+    #viewDiv {
+      padding: 0;
+      margin: 0;
+      height: 100%;
+      width: 100%;
+    }
+  #picker { width: 200px; height: 200px }
+  #slider { width: 30px; height: 200px }
+
+  .esri-section[data-dojo-attach-point="dap_transparencySection"] {
+    display: none;
+  }
+
+  .list-group-item {
+    cursor: pointer;
+  }
+
+  </style>
+
+  <link rel="stylesheet" href="https://js.arcgis.com/4.0/esri/css/main.css">
+  <link rel="stylesheet" href="https://js.arcgis.com/4.0/esri/widgets/ColorPicker/css/ColorPicker.css">
+  <link rel="stylesheet" href="https://js.arcgis.com/4.0/dijit/themes/claro/claro.css">
+  <link href="https://esri.github.io/calcite-bootstrap/assets/css/calcite-bootstrap-open.min.css" rel="stylesheet">
+  <script src="https://js.arcgis.com/4.0/"></script>
+  <script src="https://google.github.io/palette.js/palette.js"></script>
+
+  <script>
+    require([
+      "esri/core/Accessor",
+      "esri/core/watchUtils",
+      "esri/Color",
+      "esri/request",
+      "esri/Map",
+      "esri/views/MapView",
+      "esri/layers/VectorTileLayer",
+      "esri/widgets/Search",
+      "esri/widgets/ColorPicker",
+      "dojo/domReady!"
+    ], function(
+      Accessor, watchUtils,
+      Color,
+      esriRequest,
+      Map,
+      MapView,
+      VectorTileLayer,
+      Search, ColorPicker) {
+
+      var map = new Map();
+
+      var tileLyr = new VectorTileLayer({
+        url: "https://www.arcgis.com/sharing/rest/content/items/dbd2dac5fe39429eb69cd657400419a4/resources/styles/root.json"
+      });
+      map.add(tileLyr);
+
+      var view = new MapView({
+        container: "viewDiv",
+        map: map,
+        center: [-118.24, 34.04], // lon, lat
+        zoom: 15
+      });
+
+      var searchWidget = new Search({
+        viewModel: {
+          view: view
+        }
+      }, "searchDiv");
+      searchWidget.startup();
+      /* debugging
+      view.watch("center", function(center) {
+        console.log(center.longitude, center.latitude);
+      });
+      */
+
+      // Add the search widget to the top left corner of the view
+      view.ui.add(searchWidget, {
+        position: "top-right",
+        index: 1
+      });
+
+      function showColorPicker() {
+
+      }
+
+      esriRequest(tileLyr.url, { f: "json" }).then(function(response) {
+        var vtStyle = response.data;
+        console.log(response);
+        var allcolors = vtStyle.layers.map(function(layer) {
+          var clrs = [];
+          if (layer.paint) {
+            if (layer.paint["background-color"]) {
+              clrs.push(layer.paint["background-color"].toUpperCase());
+            }
+            if (layer.paint["fill-color"]) {
+              clrs.push(layer.paint["fill-color"].toUpperCase());
+            }
+            if (layer.paint["fill-outline-color"]) {
+              clrs.push(layer.paint["fill-outline-color"].toUpperCase());
+            }
+            if (layer.paint["line-color"]) {
+              clrs.push(layer.paint["line-color"].toUpperCase());
+            }
+            if (layer.paint["text-color"]) {
+              clrs.push(layer.paint["text-color"].toUpperCase());
+            }
+            if (layer.paint["text-halo-color"]) {
+              clrs.push(layer.paint["text-halo-color"].toUpperCase());
+            }
+          }
+          return clrs;
+        })
+        .reduce(function(a, b) {
+          return a.concat(b);
+        }, []);
+        var colors = allcolors.filter(function(x, i) {
+          return allcolors.indexOf(x) === i;
+        })
+        console.log("COLORS!", colors);
+
+        var colorPalette = palette('cb-PuBu', colors.length).map(function(p) {
+          return "#" + p.toUpperCase();
+        });
+
+        console.log("PALETTE", colorPalette);
+
+        var handlers = [];
+
+        // color picker
+        var pickerContainer = document.createElement("div");
+        var picker = document.createElement("div");
+        picker.id = "picker";
+        picker.className = "cp-default";
+        var btnDone = document.createElement("button");
+        btnDone.innerHTML = "Done";
+        btnDone.className = "waves-effect waves-light btn";
+        btnDone.addEventListener("click", function() {
+          pickerContainer.style.display = "none";
+          handlers.map(function(handle) {
+            handle.remove();
+          })
+          handlers.length = 0;
+        });
+        pickerContainer.appendChild(picker);
+        pickerContainer.appendChild(btnDone);
+
+        var MyColor = Accessor.createSubclass(null, {
+          properties: {
+            color: ""
+          }
+        });
+
+        var currentColor = new MyColor();
+        var node = document.createElement("div");
+        var colorpicker = new ColorPicker({
+            showRecentColors: false,
+            showTransparencySlider: false,
+            showSuggestedColors: false,
+            required: false
+          }, node);
+
+        var colorMap = {};
+
+        colorpicker.on("color-change", function() {
+          var selectedColor = colorpicker.get("color");
+          console.log(selectedColor.toHex());
+          currentColor.color = selectedColor.toHex();
+        });
+
+        // Color lists
+        var container = document.createElement("div");
+        var colorList = document.createElement("ul");
+        colorList.className = "list-group";
+        colors.forEach(function(color) {
+          colorMap[color] = color;
+          var li = document.createElement("li");
+          li.className = "list-group-item";
+          li.innerHTML = color;
+          li.style["background-color"] = color;
+          colorList.appendChild(li);
+          li.addEventListener("click", function() {
+            handlers.map(function(handle) {
+              handle.remove();
+            })
+            handlers.length = 0;
+            pickerContainer.style.display = "block";
+            var handle = currentColor.watch("color", function(clr) {
+              li.innerHTML = clr.toUpperCase();
+              li.style["background-color"] = clr.toUpperCase();
+              colorMap[color] = clr.toUpperCase();
+            });
+            handlers.push(handle);
+            colorpicker.set("color", Color.fromHex(color));
+          });
+        });
+
+        // color palette
+        var paletteList = document.createElement("ul");
+        paletteList.className = "list-group";
+        colorPalette.forEach(function(p, idx) {
+          var li = document.createElement("li");
+          li.className = "list-group-item";
+          li.innerHTML = p;
+          li.setAttribute("data-color", colors[idx]);
+          li.style["background-color"] = p;
+          paletteList.appendChild(li);
+        });
+
+        var button = document.createElement("button");
+        button.className = "btn btn-primary";
+        button.innerHTML = "Apply Updates";
+
+        button.addEventListener("click", function() {
+          console.log(vtStyle);
+          var style = JSON.stringify(vtStyle);
+          console.log("style string", style);
+          var keys = Object.keys(colorMap);
+          keys.map(function(key) {
+            console.log(key, colorMap[key]);
+            style = style.split(key).join(colorMap[key]);
+            style = style.split(key.toLowerCase()).join(colorMap[key]);
+          })
+          var obj = JSON.parse(style);
+          console.log("style object", obj);
+          tileLyr.loadStyle(obj);
+        });
+
+        container.appendChild(colorList);
+        container.appendChild(button);
+
+        // container ready
+        view.ui.add(container, "bottom-left");
+        view.ui.add(colorpicker, "bottom-left");
+      });
+
+    });
+  </script>
+</head>
+
+<body class="calicte claro">
+  <div id="viewDiv"></div>
+</body>
+
+</html>
