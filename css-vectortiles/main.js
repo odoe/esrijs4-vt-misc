@@ -73,7 +73,6 @@ require([
       view.ui.add(homeWidget, "top-left");
       view.ui.add(locateWidget, "top-left");
 
-      console.log(searchWidget.viewModel.sources);
       var source = searchWidget.viewModel.sources.getItemAt(0);
       source.resultSymbol = sym;
 
